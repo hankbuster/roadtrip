@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>愛德蒙頓至溫哥華與維多利亞 8 天自駕遊（含哥倫比亞冰原版）2027</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Leaflet 地圖套件 -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Phosphor 圖標 -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    #map { height: 100%; min-height: 520px; width: 100%; border-radius: 1rem; z-index: 10; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+  <!-- 頂部導航欄 -->
+  <header class="bg-slate-900 text-white sticky top-0 z-50 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="bg-amber-500 text-slate-950 p-2 rounded-xl text-xl flex items-center justify-center">
+          <i class="ph-bold ph-airplane-takeoff"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg leading-tight">愛德蒙頓 → 加西海岸 自駕送機遊</h1>
+          <p class="text-xs text-slate-400">2027 年 7 月 3 日 – 7 月 10 日 • 2 個家庭（共 8 人）• 含哥倫比亞冰原、班夫纜車、採櫻桃、渡輪</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2 text-xs font-medium">
+        <span id="route-status" class="bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 text-amber-400 flex items-center gap-1.5">
+          <i class="ph ph-spinner animate-spin"></i> 計算實際公路路線中...
+        </span>
+        <button onclick="window.print()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-lg transition font-semibold flex items-center gap-1">
+          <i class="ph ph-printer"></i> 列印行程
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主內容區塊 -->
+  <main class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- 左欄：地圖與里程統計 (7 欄寬) -->
+    <div class="lg:col-span-7 flex flex-col space-y-4">
+      
+      <!-- 互動地圖卡片 -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-1">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center space-x-2">
+            <i class="ph-fill ph-map-trifold text-amber-500 text-xl"></i>
+            <h2 class="font-bold text-slate-900">實際公路導航地圖</h2>
+          </div>
+          <button id="resetMapBtn" class="text-xs text-slate-500 hover:text-amber-600 font-medium underline flex items-center gap-1">
+            <i class="ph ph-arrows-out-simple"></i> 查看完整全景路線
+          </button>
+        </div>
+        
+        <div class="relative w-full h-[460px] lg:h-[530px] rounded-xl overflow-hidden border border-slate-200">
+          <div id="map"></div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap items-center justify-between text-xs text-slate-500">
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-blue-600 inline-block"></span> 自駕公路</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-teal-500 inline-block"></span> BC 渡輪航線</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> 景點與停留點</span>
+          </div>
+          <span class="italic text-slate-400">路線基於 OSRM 真實道路模型計算</span>
+        </div>
+      </div>
+
+      <!-- 分段行車時間統計 -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <h3 class="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2">
+          <i class="ph-fill ph-timer text-blue-600 text-base"></i>
+          各分段預估車程與行車距離
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
+            <span><strong>第 1 天：</strong> 愛德蒙頓 → 德蘭赫勒 (經2號路) → 卡加利西 Four Points</span>
+            <span class="text-blue-700 font-bold">約 4.5 小時 (425 km)</span>
+          </div>
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
+            <span><strong>第 2 天：</strong> 卡加利西 ⇆ 班夫纜車 ⇆ 哥倫比亞冰原 (來回)</span>
+            <span class="text-blue-700 font-bold">約 6.5 小時 (590 km)</span>
+          </div>
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
+            <span><strong>第 3 天：</strong> 卡加利西 → 幽鶴國家公園 → 雷夫爾斯托克</span>
+            <span class="text-blue-700 font-bold">約 4 小時 15 分 (395 km)</span>
+          </div>
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
+            <span><strong>第 4 天：</strong> 雷夫爾斯托克 → 基隆拿採櫻桃 → 溫哥華 River Rock</span>
+            <span class="text-blue-700 font-bold">約 6.0 小時 (575 km)</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 右欄：每日行程與 YouTube 影片列表 (5 欄寬) -->
+    <div class="lg:col-span-5 flex flex-col space-y-4">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-bold text-slate-900">行程時間軸與景點影片</h2>
+          <span class="text-xs bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full">共 8 天行程</span>
+        </div>
+
+        <!-- 天數切換按鈕 -->
+        <div class="flex overflow-x-auto gap-1.5 pb-2 mb-4 custom-scrollbar text-xs">
+          <button onclick="selectDay(1)" class="day-btn px-3 py-1.5 rounded-lg font-semibold bg-amber-500 text-slate-950 whitespace-nowrap" id="btn-day-1">第 1 天</button>
+          <button onclick="selectDay(2)" class="day-btn px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap" id="btn-day-2">第 2 天</button>
+          <button onclick="selectDay(3)" class="day-btn px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap" id="btn-day-3">第 3 天</button>
+          <button onclick="selectDay(4)" class="day-btn px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap" id="btn-day-4">第 4 天</button>
+          <button onclick="selectDay(5)" class="day-btn px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap" id="btn-day-5">第 5 天</button>
+          <button onclick="selectDay(6)" class="day-btn px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap" id="btn-day-6">第 6 天</button>
+          <button onclick="selectDay(7)" class="day-btn px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap" id="btn-day-7">第 7 天</button>
+          <button onclick="selectDay(8)" class="day-btn px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap" id="btn-day-8">第 8 天</button>
+        </div>
+
+        <!-- 動態日程內容區 -->
+        <div id="day-content" class="space-y-4">
+          <!-- 由 JavaScript 自動產生 -->
+        </div>
+
+      </div>
+
+      <!-- 預訂清單 -->
+      <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+        <h3 class="font-bold text-slate-900 text-xs uppercase tracking-wider mb-2 flex items-center gap-1.5 text-slate-500">
+          <i class="ph-bold ph-check"></i> 建議提前預約項目（8 人團隊）
+        </h3>
+        <div class="space-y-1.5 text-xs text-slate-700">
+          <div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-amber-500"></i> 皇家泰瑞爾恐龍博物館定時門票 (7/3)</div>
+          <div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-amber-500"></i> 班夫觀光纜車 Banff Gondola 門票 (7/4 上午)</div>
+          <div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-amber-500"></i> 哥倫比亞冰原雪車 Glacier Tour (7/4 下午)</div>
+          <div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-amber-500"></i> Four Points by Sheraton Calgary West 住宿 2 晚 (7/3 - 7/5)</div>
+          <div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-amber-500"></i> Best Western Plus Revelstoke 住宿 1 晚 (7/5)</div>
+          <div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-amber-500"></i> River Rock Casino Resort (列治文) 住宿 2 晚 (7/6 - 7/8)</div>
+          <div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-amber-500"></i> 雷夫爾斯托克山脈高空飛車早鳥時段 (7/6)</div>
+          <div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-amber-500"></i> BC Ferries 渡輪：馬蹄灣 → 乃磨 (7/8)</div>
+          <div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-amber-500"></i> 布查特花園 The Butchart Gardens 晚間入園 (7/9)</div>
+          <div class="flex items-center gap-2"><i class="ph-fill ph-check-circle text-amber-500"></i> BC Ferries 渡輪：斯沃茨灣 → 吐華臣 (7/10 上午)</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // 行程資料（第2天包含班夫纜車與哥倫比亞冰原）
+    const itinerary = [
+      {
+        day: 1,
+        date: "2027 年 7 月 3 日（週六）",
+        title: "愛德蒙頓 → 德蘭赫勒 (經2號路) → 卡加利西福朋喜來登",
+        stay: "Four Points by Sheraton Calgary West (第 1 晚/共 2 晚)",
+        badge: "恐龍化石與惡地景觀",
+        driveTime: "總車程約 4 小時 15 分",
+        distance: "425 公里 (2號高速公路 QEII & AB-9)",
+        lat: 51.4643,
+        lng: -112.7107,
+        zoom: 8,
+        stops: [
+          { 
+            name: "愛德蒙頓出發（行經 2 號公路）", 
+            desc: "沿 QEII 2 號高速公路南下，途經紅鹿市 (Red Deer)，轉 AB-72 / AB-9 直達德蘭赫勒（約 3 小時 15 分）。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Highway+2+Alberta+driving"
+          },
+          { 
+            name: "皇家泰瑞爾古生物博物館 (Royal Tyrrell Museum)", 
+            desc: "停留約 3.5 小時參觀恐龍骨骼化石大廳、古生物實驗室與米德蘭省立公園惡地步道。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Royal+Tyrrell+Museum+tour"
+          },
+          { 
+            name: "入住 Four Points by Sheraton Calgary West", 
+            desc: "開車 1.5 小時抵達位於卡加利西側（1號公路出口旁）的飯店入住，免進市區塞車，晚上在飯店泳池放鬆或附近用餐。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Four+Points+by+Sheraton+Calgary+West"
+          }
+        ],
+        tip: "飯店位於卡加利西側，隔天早上直接上 1 號高速公路直奔班夫，非常省時便利！"
+      },
+      {
+        day: 2,
+        date: "2027 年 7 月 4 日（週日）",
+        title: "卡加利西 ⇆ 班夫纜車 ⇆ 哥倫比亞冰原雪車 (來回)",
+        stay: "Four Points by Sheraton Calgary West (第 2 晚/共 2 晚)",
+        badge: "班夫纜車與阿薩巴斯卡冰河",
+        driveTime: "來回總車程約 6.5 小時",
+        distance: "590 公里 (1號公路 & 93號冰原大道)",
+        lat: 52.2203,
+        lng: -117.2244,
+        zoom: 8,
+        stops: [
+          { 
+            name: "班夫觀光纜車與明尼旺卡湖 (Banff Gondola & Lake Minnewanka)", 
+            desc: "早上 7:30 從卡加利出發直達班夫，搭乘景觀纜車登上硫磺山頂飽覽 360 度洛磯山全景，隨後順道遊覽明尼旺卡湖畔木橋步道。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Banff+Gondola+experience"
+          },
+          { 
+            name: "哥倫比亞冰原巨輪雪車 (Columbia Icefield Glacier Adventure)", 
+            desc: "沿 93 號冰原大道北上，搭乘巨型 Ice Explorer 全地形雪車登上阿薩巴斯卡冰河表面踏冰漫步、取飲冰川水。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Columbia+Icefield+Ice+Explorer+Athabasca+Glacier"
+          },
+          { 
+            name: "返回卡加利西 Four Points 飯店", 
+            desc: "沿冰原大道南下返回卡加利西飯店休息，今晚續住同一家飯店免換房，小朋友可在室內泳池好好放鬆。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Icefields+Parkway+driving+view"
+          }
+        ],
+        tip: "建議預約上午 9:00 班夫纜車及下午 1:30 哥倫比亞冰原雪車梯次，時間銜接最為流暢。"
+      },
+      {
+        day: 3,
+        date: "2027 年 7 月 5 日（週一）",
+        title: "卡加利西 → 幽鶴國家公園 → 雷夫爾斯托克",
+        stay: "Best Western Plus Revelstoke (第 1 晚)",
+        badge: "翡翠湖與羅傑斯隘口",
+        driveTime: "總車程約 4 小時 15 分",
+        distance: "395 公里 (1號公路 Trans-Canada Hwy)",
+        lat: 50.9981,
+        lng: -118.1957,
+        zoom: 8,
+        stops: [
+          { 
+            name: "幽鶴國家公園翡翠湖與天然橋 (Emerald Lake & Natural Bridge)", 
+            desc: "越過分水嶺進入卑詩省，探訪如綠寶石般靜謐的翡翠湖，欣賞踢馬河雕琢的天然石橋。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Emerald+Lake+Yoho+National+Park"
+          },
+          { 
+            name: "羅傑斯隘口景觀公路 (Rogers Pass)", 
+            desc: "行經冰川國家公園壯麗的羅傑斯隘口，欣賞白雪覆頂的高山隧道與冰川地貌。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Rogers+Pass+drive+BC"
+          },
+          { 
+            name: "雷夫爾斯托克 (Best Western Plus Revelstoke)", 
+            desc: "傍晚抵達雷夫爾斯托克入住飯店，孩子們可以在戶外溫水泳池與熱水按摩池放鬆消暑。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Best+Western+Plus+Revelstoke"
+          }
+        ],
+        tip: "進入卑詩省後時區變慢 1 小時（太平洋時間），多出 1 小時可以充分享受飯店設施與小鎮晚餐。"
+      },
+      {
+        day: 4,
+        date: "2027 年 7 月 6 日（週二）",
+        title: "山脈高空飛車 → 基隆拿採櫻桃 → 溫哥華 River Rock",
+        stay: "River Rock Casino Resort (第 1 晚/共 2 晚)",
+        badge: "高山飛車與果園採櫻桃",
+        driveTime: "總車程約 6 小時",
+        distance: "575 公里 (97A 公路 & 5號高貴哈拉公路)",
+        lat: 49.8880,
+        lng: -119.4960,
+        zoom: 8,
+        stops: [
+          { 
+            name: "雷夫爾斯托克山脈高空飛車 (Pipe Mountain Coaster)", 
+            desc: "早上 8:30 在渡假村體驗重力滑行軌道，穿越高山森林，享受俯衝刺激感。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Pipe+Mountain+Coaster+Revelstoke"
+          },
+          { 
+            name: "基隆拿觀光果園採櫻桃 (Kelowna U-Pick Cherries)", 
+            desc: "南下歐肯納根谷 (Okanagan Valley)，親手採摘 7 月盛產的新鮮特甜 Bing 與 Lapin 櫻桃。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Kelowna+cherry+picking+orchard"
+          },
+          { 
+            name: "入住 River Rock Casino Resort (列治文/溫哥華)", 
+            desc: "沿 5 號高貴哈拉公路抵達渡假村，享受菲沙河畔水岸美景、室內滑水道泳池與豐富美食。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=River+Rock+Casino+Resort+Richmond"
+          }
+        ],
+        tip: "River Rock 渡假村附設附滑水道的室內溫水泳池，且直通捷運站，是大人小孩都會喜歡的豪華住宿！"
+      },
+      {
+        day: 5,
+        date: "2027 年 7 月 7 日（週三）",
+        title: "史丹利公園單車騎行、格蘭佛島公眾市場與福溪水上巴士",
+        stay: "River Rock Casino Resort (第 2 晚/共 2 晚)",
+        badge: "單車海堤與市場美食",
+        driveTime: "市區大眾運輸 / 單車 / 渡輪",
+        distance: "15 公里",
+        lat: 49.2965,
+        lng: -123.1442,
+        zoom: 13,
+        stops: [
+          { 
+            name: "史丹利公園海堤單車騎行 (Stanley Park Seawall)", 
+            desc: "在 Denman 街租借自行車，沿著 9 公里海堤環島騎行，途經原住民圖騰柱、展望角 (Prospect Point) 俯瞰獅門大橋，欣賞海蝕石 (Siwash Rock)。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Stanley+Park+Seawall+biking+Vancouver"
+          },
+          { 
+            name: "格蘭佛島公眾市場 (Granville Island Public Market)", 
+            desc: "品嚐手工烘焙、炸魚薯條、甜甜圈與新鮮水果，逛逛專屬兒童市場與街頭藝人表演。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Granville+Island+Public+Market+Vancouver"
+          },
+          { 
+            name: "福溪彩虹水上渡輪與英吉利灣 (False Creek Aquabus)", 
+            desc: "搭乘色彩繽紛的可愛迷你渡輪穿梭福溪，傍晚在英吉利灣海灘欣賞日落後返回 River Rock。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=False+Creek+Aquabus+Vancouver"
+          }
+        ],
+        tip: "可直接從 River Rock 門口搭乘 Canada Line 捷運直達溫哥華市中心，省去市區停車煩惱！"
+      },
+      {
+        day: 6,
+        date: "2027 年 7 月 8 日（週四）",
+        title: "馬蹄灣渡輪 → 乃磨 → 馬拉哈特天空步道 → 維多利亞",
+        stay: "維多利亞市中心 (Victoria, BC - 第 1 晚/共 2 晚)",
+        badge: "海島渡輪與高空滑梯",
+        driveTime: "車程 1 小時 45 分 + 渡輪 1 小時 40 分",
+        distance: "112 公里公路",
+        lat: 48.6019,
+        lng: -123.5539,
+        zoom: 9,
+        stops: [
+          { 
+            name: "BC Ferries 渡輪（馬蹄灣 → 乃磨啟航灣）", 
+            desc: "搭乘 1 小時 40 分鐘的渡輪橫越喬治亞海峽，甲板上可遠眺壯麗海景與海島風光。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=BC+Ferries+Horseshoe+Bay+to+Nanaimo"
+          },
+          { 
+            name: "乃磨海濱步道與品嚐乃磨條 (Nanaimo Bar)", 
+            desc: "漫步海濱長廊，品嚐發源於當地的正統巧克力椰絲乃磨條甜點。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Nanaimo+Bar+Trail+BC"
+          },
+          { 
+            name: "馬拉哈特天空步道 (Malahat Skywalk)", 
+            desc: "沿 1 號公路南下登上 250 公尺高螺旋木塔，走上高空冒險網繩，並體驗 68 公尺螺旋溜滑梯急速滑下。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Malahat+Skywalk+spiral+tower+slide"
+          }
+        ],
+        tip: "建議提前 45 分鐘抵達馬蹄灣碼頭辦理車輛登船報到手續。"
+      },
+      {
+        day: 7,
+        date: "2027 年 7 月 9 日（週五）",
+        title: "維多利亞內港漫步、漁人碼頭與布查特花園",
+        stay: "維多利亞市中心 (Victoria, BC - 第 2 晚/共 2 晚)",
+        badge: "歷史唐人街與璀璨夜花園",
+        driveTime: "市區與周邊車程約 40 分鐘",
+        distance: "35 公里",
+        lat: 48.4284,
+        lng: -123.3656,
+        zoom: 11,
+        stops: [
+          { 
+            name: "維多利亞內港與番攤里 (Inner Harbour & Fan Tan Alley)", 
+            desc: "漫步維多利亞內港欣賞卑詩省議會大廈與帝后飯店外觀，探索加拿大最窄的番攤里 (Fan Tan Alley) 與歷史唐人街。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Victoria+Inner+Harbour+Fan+Tan+Alley"
+          },
+          { 
+            name: "漁人碼頭彩色浮水屋 (Fisherman's Wharf)", 
+            desc: "漫步水上浮動木棧道，享用炸魚薯條或墨西哥捲餅，觀察水裡活潑的海豹。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Fishermans+Wharf+Victoria+BC"
+          },
+          { 
+            name: "布查特花園夏夜燈光秀 (The Butchart Gardens)", 
+            desc: "傍晚造訪下沉花園與日本花園，欣賞夏季專屬的夜間彩燈與噴泉燈光秀。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=The+Butchart+Gardens+night+illumination"
+          }
+        ],
+        tip: "布查特花園建議於下午 6:30 左右入場，可同時欣賞白天繁花景緻與入夜後的夢幻燈光。"
+      },
+      {
+        day: 8,
+        date: "2027 年 7 月 10 日（週六）",
+        title: "渡輪返航吐華臣 → 溫哥華機場 (YVR) 送機返台 / 回愛德蒙頓",
+        stay: "返台航班 / 回愛德蒙頓",
+        badge: "滿載回憶平安返航",
+        driveTime: "車程 30 分鐘 + 渡輪 1 小時 30 分",
+        distance: "35 公里公路",
+        lat: 49.0068,
+        lng: -123.1294,
+        zoom: 10,
+        stops: [
+          { 
+            name: "斯沃茨灣 → 吐華臣 BC 渡輪 (Swartz Bay to Tsawwassen)", 
+            desc: "搭乘上午 90 分鐘渡輪穿越海灣群島，欣賞壯麗航道風光。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=BC+Ferries+Active+Pass+Gulf+Islands"
+          },
+          { 
+            name: "溫哥華國際機場 (YVR) 送機返台 (TPE)", 
+            desc: "下渡輪後開車 30 分鐘抵達 YVR 機場歸還租車，協助朋友辦理長榮/華航直飛台北登機手續，自己搭機或返程回愛德蒙頓。",
+            youtubeUrl: "https://www.youtube.com/results?search_query=Vancouver+International+Airport+YVR"
+          }
+        ],
+        tip: "建議預訂上午 9:00 或 10:00 的渡輪班次，為下午 2:30 之後由 YVR 起飛返台的國際航班預留充足託運與安檢時間。"
+      }
+    ];
+
+    // 實際公路導航節點（包含哥倫比亞冰原節點）
+    const roadWaypoints = [
+      [-113.4938, 53.5461], // 愛德蒙頓
+      [-113.8115, 52.2681], // 紅鹿市 (QEII 2號公路)
+      [-114.0305, 51.4338], // AB-72 / AB-9 交流道
+      [-112.7107, 51.4643], // 德蘭赫勒
+      [-114.1956, 51.0833], // Four Points Calgary West
+      [-115.5600, 51.1500], // 班夫纜車
+      [-115.5000, 51.2464], // 明尼旺卡湖
+      [-117.2244, 52.2203], // 哥倫比亞冰原
+      [-116.5360, 51.4420], // 幽鶴翡翠湖
+      [-118.1957, 50.9981], // 雷夫爾斯托克
+      [-119.4960, 49.8880], // 基隆拿
+      [-120.7869, 50.1119], // 梅里特 (Merritt)
+      [-123.1265, 49.1963]  // River Rock Casino Resort
+    ];
+
+    const islandWaypoints = [
+      [-123.9555, 49.1942], // 乃磨
+      [-123.5539, 48.6019], // 馬拉哈特
+      [-123.3656, 48.4284]  // 維多利亞
+    ];
+
+    // 地圖地標圖釘
+    const mapPins = [
+      { name: "愛德蒙頓出發點", coords: [53.5461, -113.4938], type: "start", day: 1 },
+      { name: "皇家泰瑞爾恐龍博物館", coords: [51.4643, -112.7107], type: "attraction", day: 1 },
+      { name: "Four Points by Sheraton Calgary West (第 1、2 晚)", coords: [51.0833, -114.1956], type: "stay", day: 1 },
+      { name: "班夫觀光纜車 (Banff Gondola)", coords: [51.1500, -115.5600], type: "attraction", day: 2 },
+      { name: "明尼旺卡湖 (Lake Minnewanka)", coords: [51.2464, -115.5000], type: "attraction", day: 2 },
+      { name: "哥倫比亞冰原巨輪雪車 (Columbia Icefield)", coords: [52.2203, -117.2244], type: "attraction", day: 2 },
+      { name: "幽鶴翡翠湖 (Emerald Lake)", coords: [51.4420, -116.5360], type: "attraction", day: 3 },
+      { name: "Best Western Plus Revelstoke (第 3 晚)", coords: [50.9981, -118.1957], type: "stay", day: 3 },
+      { name: "山脈高空飛車 (Pipe Coaster)", coords: [50.9578, -118.1639], type: "attraction", day: 4 },
+      { name: "基隆拿採櫻桃觀光果園", coords: [49.8880, -119.4960], type: "attraction", day: 4 },
+      { name: "River Rock Casino Resort (第 4、5 晚)", coords: [49.1963, -123.1265], type: "stay", day: 4 },
+      { name: "史丹利公園與格蘭佛島", coords: [49.2965, -123.1442], type: "attraction", day: 5 },
+      { name: "馬蹄灣渡輪碼頭", coords: [49.3758, -123.2725], type: "ferry", day: 6 },
+      { name: "乃磨啟航灣 (Departure Bay)", coords: [49.1942, -123.9555], type: "attraction", day: 6 },
+      { name: "馬拉哈特天空步道", coords: [48.6019, -123.5539], type: "attraction", day: 6 },
+      { name: "維多利亞市中心 (第 6、7 晚)", coords: [48.4284, -123.3656], type: "stay", day: 7 },
+      { name: "布查特花園 (The Butchart Gardens)", coords: [48.5637, -123.4673], type: "attraction", day: 7 },
+      { name: "斯沃茨灣渡輪碼頭", coords: [48.6882, -123.4103], type: "ferry", day: 8 },
+      { name: "溫哥華國際機場 YVR (送機返台)", coords: [49.1967, -123.1815], type: "airport", day: 8 }
+    ];
+
+    // 初始化 Leaflet 地圖
+    let map = L.map('map').setView([51.0, -118.5], 6);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap 貢獻者'
+    }).addTo(map);
+
+    // 加入圖釘標記
+    let markers = [];
+    mapPins.forEach(pin => {
+      let iconColor = pin.type === 'stay' ? '#2563eb' : (pin.type === 'ferry' ? '#0d9488' : (pin.type === 'airport' ? '#dc2626' : '#f59e0b'));
+      let customIcon = L.divIcon({
+        className: 'custom-pin',
+        html: `<div style="background-color: ${iconColor}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+        iconSize: [14, 14]
+      });
+
+      let marker = L.marker(pin.coords, { icon: customIcon }).addTo(map);
+      marker.bindPopup(`<strong>${pin.name}</strong><br><span style="font-size:11px;">第 ${pin.day} 天行程</span>`);
+      markers.push({ ...pin, leafletMarker: marker });
+    });
+
+    // 渡輪虛線
+    const ferry1 = [[49.3758, -123.2725], [49.1942, -123.9555]];
+    L.polyline(ferry1, { color: '#0d9488', weight: 4, dashArray: '6, 8', opacity: 0.9 }).addTo(map);
+
+    const ferry2 = [[48.6882, -123.4103], [49.0068, -123.1294]];
+    L.polyline(ferry2, { color: '#0d9488', weight: 4, dashArray: '6, 8', opacity: 0.9 }).addTo(map);
+
+    // 獲取 OSRM 公路真實幾何形狀
+    async function fetchRoadGeometry(coords) {
+      const coordString = coords.map(c => `${c[0]},${c[1]}`).join(';');
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordString}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return data.routes[0].geometry.coordinates.map(pt => [pt[1], pt[0]]);
+    }
+
+    async function loadActualRoads() {
+      try {
+        const mainlandRoads = await fetchRoadGeometry(roadWaypoints);
+        L.polyline(mainlandRoads, { color: '#2563eb', weight: 5, opacity: 0.85 }).addTo(map);
+
+        const islandRoads = await fetchRoadGeometry(islandWaypoints);
+        L.polyline(islandRoads, { color: '#2563eb', weight: 5, opacity: 0.85 }).addTo(map);
+
+        document.getElementById('route-status').innerHTML = '<i class="ph-fill ph-check-circle text-emerald-400"></i> 已加載哥倫比亞冰原與送機導航路線';
+      } catch (err) {
+        console.error("OSRM 載入備用模式:", err);
+        document.getElementById('route-status').innerHTML = '<i class="ph ph-map-pin"></i> 顯示直線導航路徑';
+      }
+    }
+    loadActualRoads();
+
+    document.getElementById('resetMapBtn').addEventListener('click', () => {
+      map.flyTo([51.0, -118.5], 6);
+    });
+
+    // 切換天數顯示
+    function selectDay(dayNum) {
+      document.querySelectorAll('.day-btn').forEach(btn => {
+        btn.className = "day-btn px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 whitespace-nowrap";
+      });
+      const activeBtn = document.getElementById(`btn-day-${dayNum}`);
+      if (activeBtn) {
+        activeBtn.className = "day-btn px-3 py-1.5 rounded-lg font-semibold bg-amber-500 text-slate-950 whitespace-nowrap";
+      }
+
+      const dayData = itinerary.find(d => d.day === dayNum);
+      if (!dayData) return;
+
+      map.flyTo([dayData.lat, dayData.lng], dayData.zoom, { duration: 1.2 });
+
+      const pin = markers.find(m => m.day === dayNum);
+      if (pin) pin.leafletMarker.openPopup();
+
+      const container = document.getElementById('day-content');
+      container.innerHTML = `
+        <div class="border-b border-slate-100 pb-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-600 uppercase tracking-wider">第 ${dayData.day} 天 • ${dayData.date}</span>
+            <span class="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">${dayData.badge}</span>
+          </div>
+          <h3 class="text-lg font-bold text-slate-900 mt-1">${dayData.title}</h3>
+          <div class="flex flex-wrap items-center gap-3 mt-1.5 text-xs">
+            <span class="text-slate-500"><i class="ph-bold ph-bed text-blue-600"></i> 住宿：<strong>${dayData.stay}</strong></span>
+            <span class="bg-blue-50 text-blue-800 px-2 py-0.5 rounded font-semibold border border-blue-200"><i class="ph-bold ph-clock"></i> ${dayData.driveTime}</span>
+            <span class="text-slate-400">(${dayData.distance})</span>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <h4 class="text-xs font-semibold text-slate-400 uppercase">行程細節與 YouTube 景點影片</h4>
+          ${dayData.stops.map((stop, i) => `
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0">${i+1}</span>
+                  <h5 class="text-xs font-bold text-slate-900">${stop.name}</h5>
+                </div>
+                <a href="${stop.youtubeUrl}" target="_blank" class="text-[11px] font-semibold text-red-600 hover:text-red-700 flex items-center gap-1 bg-white px-2 py-1 rounded-md border border-slate-200 shadow-2xs transition">
+                  <i class="ph-fill ph-youtube-logo text-sm"></i> 觀看影片 <i class="ph ph-arrow-square-out text-[10px]"></i>
+                </a>
+              </div>
+              <p class="text-xs text-slate-600">${stop.desc}</p>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+          <i class="ph-fill ph-lightbulb text-amber-600 text-base shrink-0 mt-0.5"></i>
+          <div><strong>行車與遊玩貼士：</strong> ${dayData.tip}</div>
+        </div>
+      `;
+    }
+
+    // 預設載入第 1 天
+    selectDay(1);
+  </script>
+</body>
+</html>
